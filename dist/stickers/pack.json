@@ -1,0 +1,31 @@
+{
+  "name": "ASCII Christmas Tree",
+  "publisher": "OxSlash",
+  "size": 512,
+  "fps": 15,
+  "frames": 30,
+  "duration": 2.0,
+  "stickers": [
+    {
+      "name": "Tree grows",
+      "file": "tree-grow.webp",
+      "emoji": "🎄",
+      "bytes": 280596,
+      "quality": 55
+    },
+    {
+      "name": "Lights on",
+      "file": "tree-lights.webp",
+      "emoji": "✨",
+      "bytes": 417340,
+      "quality": 55
+    },
+    {
+      "name": "Star topper",
+      "file": "tree-star.webp",
+      "emoji": "⭐",
+      "bytes": 497290,
+      "quality": 55
+    }
+  ]
+}
