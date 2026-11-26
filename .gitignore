@@ -1,0 +1,49 @@
+# ============================================================
+#  ascii-christmas-tree — .gitignore
+# ============================================================
+
+# --- Brief / spesifikasi lokal (sengaja TIDAK ikut repo) ---
+task.md
+
+# --- Memori kerja AI (lokal saja, lihat memory/README.md) ---
+memory/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.eggs/
+/web/build/
+/web-cache/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Output runtime (screenshot / rekaman dari tombol S) ---
+screenshots/
+out/
+*.mp4
+*.webm
+config.local.json
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Catatan: file preview (docs/demo.gif, docs/preview.png) SENGAJA
+#     tidak di-ignore agar bisa dipakai di README.
