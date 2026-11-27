@@ -35,24 +35,10 @@ body {
   background: #070a12;
   box-shadow: 0 0 60px rgba(80, 140, 255, 0.12);
 }
-#hint {
-  position: fixed;
-  bottom: max(6px, env(safe-area-inset-bottom));
-  width: 100%;
-  text-align: center;
-  color: #4a5a72;
-  font: 11px/1.4 ui-monospace, monospace;
-  pointer-events: none;
-  user-select: none;
-}
-@media (max-width: 640px) {
-  #hint { font-size: 10px; }
-}
 </style>
 </head>
 <body>
 <canvas id="stage"></canvas>
-<div id="hint">tap or press space to pause &middot; R restart &middot; D debug</div>
 <script>
 const CFG = __CONFIG__;
 const BG_DATA = __BACKGROUND__;
@@ -141,9 +127,8 @@ function fitCanvas() {
   }
   ctx.setTransform(1, 0, 0, 1, -VIEW.x, -VIEW.y);
   const pad = window.innerWidth < 560 ? 0 : 24;
-  const hintSpace = window.innerWidth < 560 ? 16 : 22;
   const availW = window.innerWidth - pad;
-  const availH = window.innerHeight - pad - hintSpace;
+  const availH = window.innerHeight - pad;
   const scale = Math.max(0.25, Math.min(availW / VIEW.w, availH / VIEW.h));
   canvas.style.width = Math.floor(VIEW.w * scale) + "px";
   canvas.style.height = Math.floor(VIEW.h * scale) + "px";
@@ -409,17 +394,8 @@ function hudLeft() {
   return Math.floor(VIEW.x / CW) + 1;
 }
 
-function hudRight(text) {
-  return Math.ceil((VIEW.x + VIEW.w) / CW) - text.length;
-}
-
 function drawOverlay() {
   const left = hudLeft();
-  const titleText = "ASCII Christmas Tree";
-  fb.text(titleText, 0, left, CFG.goldLight, LEVELS - 1);
-  fb.text("tap pause   R restart   D debug", 1, left, CFG.silver, 8);
-  const clock = "t ~ " + state.t.toFixed(1) + "s";
-  fb.text(clock, 0, hudRight(clock), CFG.white, LEVELS - 1);
 
   const rotation = ((Math.floor((CFG.omega * state.t * 180) / Math.PI) % 360) + 360) % 360;
   const lights = Math.round(lightsRatio * 100);
@@ -430,9 +406,9 @@ function drawOverlay() {
   fb.text("seed " + CFG.seed, ROWS - 3, left, CFG.silver, 7);
 
   if (state.debug) {
-    fb.text("fps " + fpsValue.toFixed(1), 2, left, CFG.emeraldLight, 10);
-    fb.text("particles " + TREE.n, 3, left, CFG.emeraldLight, 10);
-    fb.text("cells " + visibleCells, 4, left, CFG.emeraldLight, 10);
+    fb.text("fps " + fpsValue.toFixed(1), 0, left, CFG.emeraldLight, 10);
+    fb.text("particles " + TREE.n, 1, left, CFG.emeraldLight, 10);
+    fb.text("cells " + visibleCells, 2, left, CFG.emeraldLight, 10);
   }
 
   if (letters > 0) {
