@@ -28,15 +28,31 @@ The same tree ships in three forms, so you can pick whichever fits the moment.
 
 | Form | File | Works offline | How to send it |
 |---|---|---|---|
-| Browser build | `public/` | No | Deploy to Vercel, share the link |
+| Shareable link | `index.html` + `dist/` | No | Post the GitHub Pages URL |
 | Single HTML file | `dist/ascii-christmas-tree.html` | **Yes** | WhatsApp → Document |
-| Animated stickers | `dist/stickers/pack.wastickers` | **Yes** | Import once, then use anywhere |
 | Tree-shaped QR code | `docs/qr-tree.png` | No | Send as a photo, they scan it |
+
+### Shareable link
+
+The repository is ready to publish as a static site. `index.html` carries the
+Open Graph tags that make a link preview show the tree instead of a bare URL,
+then redirects straight to the single-file build.
+
+```
+Repository → Settings → Pages
+Source : Deploy from a branch
+Branch : main
+Folder : / (root)
+```
+
+The site lands at `https://oxslash.github.io/ascii-christmas-tree/`. Four preview
+cards are included at 1200 × 630, and the mobile layout crops only empty sky so
+the banner stays readable on a phone. See [docs/SHARING.md](docs/SHARING.md).
 
 ### Single HTML file
 
-One self-contained file, ~576 KB. No server, no internet, no Python. Open it and the
-tree runs. Built with:
+One self-contained file, ~578 KB. No server, no internet, no Python. Open it and
+the tree runs. Built with:
 
 ```bash
 python tools/build_single_file.py
@@ -44,30 +60,18 @@ python tools/build_single_file.py
 
 See [docs/SINGLE_FILE.md](docs/SINGLE_FILE.md).
 
-### Animated stickers
-
-Three looping 512 × 512 stickers cut from the real renderer, each 2 seconds at 15 fps
-and under WhatsApp's 500 KB limit. Built with:
-
-```bash
-python tools/make_stickers.py
-python tools/check_stickers.py
-```
-
-Import `dist/stickers/pack.wastickers` with an app such as Sticker Maker. See
-[docs/STICKERS.md](docs/STICKERS.md).
-
 ### Tree-shaped QR code
 
-A QR code whose modules themselves form a Christmas tree, so the thing you scan and
-the thing you see are the same object. Error correction level H leaves room for the
-artwork without breaking the code. Built with:
+A QR code whose modules themselves form a Christmas tree, so the thing you scan
+and the thing you see are the same object. Error correction level H leaves room
+for the artwork without breaking the code. Built with:
 
 ```bash
 python tools/make_qr.py --url "https://your-site.vercel.app"
 ```
 
 Verified to still decode after JPEG quality 40 and downscaling to 30% of its size.
+
 
 ## Controls
 
@@ -127,26 +131,32 @@ web/main.py                    the entire program
 web/FiraMono-Regular.ttf       bundled monospace font
 web/OFL.txt                    SIL Open Font License for the font
 
+index.html                     GitHub Pages landing page with Open Graph tags
+.nojekyll                      serve files as-is on GitHub Pages
+
 tools/build_web.py             pygbag build + copy into public/
 tools/build_single_file.py     build the offline HTML file
-tools/make_stickers.py         build the animated sticker pack
 tools/make_qr.py               build the tree-shaped QR code
+tools/make_social_cards.py     build the four 1200x630 preview cards
 
-tools/check_single_file.py     headless Chrome: load, screenshot, report FPS
+tools/browser_probe.py         headless Edge/Chrome driver, kills only its own process
+tools/check_index.py           load index.html, confirm the redirect lands on the tree
+tools/check_mobile.py          load the tree at three phone viewports, screenshot each
+tools/check_single_file.py     load the tree on desktop, report view size and FPS
 tools/bench_single_file.py     measure FPS three times, take the median
 tools/dump_native_frame.py     dump the pygame framebuffer to JSON
 tools/compare_frames.py        compare web frame against native frame
-tools/check_stickers.py        read the WebP bytes back and assert validity
 tools/check_qr.py              decode the QR after compression and downscaling
 
 public/                        ready-to-deploy browser build
-dist/                          offline HTML file and sticker pack
-docs/                          preview, deploy guide, per-feature docs
+dist/                          offline HTML file
+docs/                          preview, preview cards, QR, deploy and sharing guides
 ```
 
-The four `check_*` scripts and `compare_frames.py` exist to prove the claims above
-rather than assume them. They need extra packages installed locally, and those are
-deliberately absent from `requirements.txt`.
+The `check_*` scripts and `compare_frames.py` exist to prove the claims above
+rather than assume them. They drive a headless browser through the DevTools
+protocol and terminate only the process they started, so a browser you are using
+is never touched.
 
 ## How it works
 
@@ -163,7 +173,8 @@ Measured on the development machine:
 |---|---|
 | Desktop (pygame-ce, SDL) | 310 FPS |
 | Browser (pygbag / WebAssembly) | 30.4 FPS |
-| Offline HTML (JavaScript) | 36.0 FPS |
+| Offline HTML (JavaScript, desktop) | 48.4 FPS |
+| Offline HTML (JavaScript, phone viewport) | 36.0 FPS |
 
 The offline HTML build reaches 99.91% glyph agreement with the pygame build at the
 same timestamp; the remaining cells are sub-pixel tie-breaks that are not visible.

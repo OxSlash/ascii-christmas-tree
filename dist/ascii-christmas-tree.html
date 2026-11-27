@@ -18,11 +18,15 @@ html, body {
   height: 100%;
   background: #05070d;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 body {
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 100dvh;
 }
 #stage {
   display: block;
@@ -33,13 +37,16 @@ body {
 }
 #hint {
   position: fixed;
-  bottom: 6px;
+  bottom: max(6px, env(safe-area-inset-bottom));
   width: 100%;
   text-align: center;
   color: #4a5a72;
   font: 11px/1.4 ui-monospace, monospace;
   pointer-events: none;
   user-select: none;
+}
+@media (max-width: 640px) {
+  #hint { font-size: 10px; }
 }
 </style>
 </head>
@@ -109,15 +116,40 @@ canvas.width = COLS * CW;
 canvas.height = ROWS * CH;
 const ctx = canvas.getContext("2d", { alpha: false });
 
+const VIEW = { x: 0, y: 0, w: canvas.width, h: canvas.height };
+
+function computeView() {
+  const narrow = window.innerWidth < 560;
+  VIEW.y = 0;
+  VIEW.h = ROWS * CH;
+  if (!narrow) {
+    VIEW.x = 0;
+    VIEW.w = COLS * CW;
+    return;
+  }
+  const cropCols = 62;
+  VIEW.w = cropCols * CW;
+  VIEW.x = Math.round(CFG.centerX * CW - VIEW.w / 2);
+  VIEW.x = Math.max(0, Math.min(COLS * CW - VIEW.w, VIEW.x));
+}
+
 function fitCanvas() {
-  const pad = 24;
+  computeView();
+  if (canvas.width !== VIEW.w || canvas.height !== VIEW.h) {
+    canvas.width = VIEW.w;
+    canvas.height = VIEW.h;
+  }
+  ctx.setTransform(1, 0, 0, 1, -VIEW.x, -VIEW.y);
+  const pad = window.innerWidth < 560 ? 0 : 24;
+  const hintSpace = window.innerWidth < 560 ? 16 : 22;
   const availW = window.innerWidth - pad;
-  const availH = window.innerHeight - pad - 22;
-  const scale = Math.max(0.4, Math.min(availW / canvas.width, availH / canvas.height));
-  canvas.style.width = Math.floor(canvas.width * scale) + "px";
-  canvas.style.height = Math.floor(canvas.height * scale) + "px";
+  const availH = window.innerHeight - pad - hintSpace;
+  const scale = Math.max(0.25, Math.min(availW / VIEW.w, availH / VIEW.h));
+  canvas.style.width = Math.floor(VIEW.w * scale) + "px";
+  canvas.style.height = Math.floor(VIEW.h * scale) + "px";
 }
 window.addEventListener("resize", fitCanvas);
+window.addEventListener("orientationchange", () => setTimeout(fitCanvas, 120));
 fitCanvas();
 
 class Framebuffer {
@@ -373,23 +405,34 @@ function letterCount() {
 
 const CYCLE = [CFG.goldLight, 13, 16, 15, CFG.silver, 19];
 
+function hudLeft() {
+  return Math.floor(VIEW.x / CW) + 1;
+}
+
+function hudRight(text) {
+  return Math.ceil((VIEW.x + VIEW.w) / CW) - text.length;
+}
+
 function drawOverlay() {
-  fb.text(CFG.title, 0, 1, CFG.goldLight, LEVELS - 1);
-  fb.text("tap pause   R restart   D debug", 1, 1, CFG.silver, 8);
-  fb.text("t ~ " + state.t.toFixed(1) + "s", 0, COLS - 10, CFG.white, LEVELS - 1);
+  const left = hudLeft();
+  const titleText = "ASCII Christmas Tree";
+  fb.text(titleText, 0, left, CFG.goldLight, LEVELS - 1);
+  fb.text("tap pause   R restart   D debug", 1, left, CFG.silver, 8);
+  const clock = "t ~ " + state.t.toFixed(1) + "s";
+  fb.text(clock, 0, hudRight(clock), CFG.white, LEVELS - 1);
 
   const rotation = ((Math.floor((CFG.omega * state.t * 180) / Math.PI) % 360) + 360) % 360;
   const lights = Math.round(lightsRatio * 100);
   const letters = letterCount();
-  fb.text("rotation " + String(rotation).padStart(3, " ") + " deg", ROWS - 6, 1, CFG.silver, 9);
-  fb.text("lights " + String(lights).padStart(3, " ") + "%", ROWS - 5, 1, CFG.gold, 9);
-  fb.text("letters " + String(letters).padStart(2, " "), ROWS - 4, 1, CFG.pinePale, 9);
-  fb.text("seed " + CFG.seed, ROWS - 3, 1, CFG.silver, 7);
+  fb.text("rotation " + String(rotation).padStart(3, " ") + " deg", ROWS - 6, left, CFG.silver, 9);
+  fb.text("lights " + String(lights).padStart(3, " ") + "%", ROWS - 5, left, CFG.gold, 9);
+  fb.text("letters " + String(letters).padStart(2, " "), ROWS - 4, left, CFG.pinePale, 9);
+  fb.text("seed " + CFG.seed, ROWS - 3, left, CFG.silver, 7);
 
   if (state.debug) {
-    fb.text("fps " + fpsValue.toFixed(1), 2, 1, CFG.emeraldLight, 10);
-    fb.text("particles " + TREE.n, 3, 1, CFG.emeraldLight, 10);
-    fb.text("cells " + visibleCells, 4, 1, CFG.emeraldLight, 10);
+    fb.text("fps " + fpsValue.toFixed(1), 2, left, CFG.emeraldLight, 10);
+    fb.text("particles " + TREE.n, 3, left, CFG.emeraldLight, 10);
+    fb.text("cells " + visibleCells, 4, left, CFG.emeraldLight, 10);
   }
 
   if (letters > 0) {
@@ -416,13 +459,18 @@ function drawOverlay() {
 
 function compose() {
   ctx.fillStyle = "rgb(" + CFG.bg[0] + "," + CFG.bg[1] + "," + CFG.bg[2] + ")";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  for (let i = 0; i < fb.glyph.length; i++) {
-    const g = fb.glyph[i];
-    if (g < 0) continue;
-    const row = (i / COLS) | 0;
-    const col = i - row * COLS;
-    ctx.drawImage(atlas.tile(g, fb.color[i], fb.level[i]), col * CW, row * CH);
+  ctx.fillRect(VIEW.x, VIEW.y, VIEW.w, VIEW.h);
+  const c0 = Math.max(0, Math.floor(VIEW.x / CW));
+  const c1 = Math.min(COLS, Math.ceil((VIEW.x + VIEW.w) / CW));
+  const r0 = Math.max(0, Math.floor(VIEW.y / CH));
+  const r1 = Math.min(ROWS, Math.ceil((VIEW.y + VIEW.h) / CH));
+  for (let row = r0; row < r1; row++) {
+    const base = row * COLS;
+    for (let col = c0; col < c1; col++) {
+      const g = fb.glyph[base + col];
+      if (g < 0) continue;
+      ctx.drawImage(atlas.tile(g, fb.color[base + col], fb.level[base + col]), col * CW, row * CH);
+    }
   }
 }
 
@@ -480,8 +528,21 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-canvas.addEventListener("pointerdown", () => {
+let tapStart = null;
+canvas.addEventListener("pointerdown", (event) => {
+  tapStart = { x: event.clientX, y: event.clientY, t: performance.now() };
+});
+canvas.addEventListener("pointerup", (event) => {
+  if (!tapStart) return;
+  const dx = Math.abs(event.clientX - tapStart.x);
+  const dy = Math.abs(event.clientY - tapStart.y);
+  const elapsed = performance.now() - tapStart.t;
+  tapStart = null;
+  if (dx > 10 || dy > 10 || elapsed > 600) return;
   state.paused = !state.paused;
+});
+canvas.addEventListener("pointercancel", () => {
+  tapStart = null;
 });
 
 document.fonts.ready.then(() => {
