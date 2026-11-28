@@ -697,7 +697,7 @@ class Bursts:
         self.rng = np.random.default_rng(2026)
 
     def spawn(self, col, row):
-        count = 46
+        count = 34
         angle = self.rng.uniform(0.0, math.tau, count)
         speed = self.rng.uniform(3.0, 17.0, count)
         self.col.extend([col] * count)
@@ -778,6 +778,8 @@ class App:
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button != 1:
+                    continue
                 col = event.pos[0] / CELL_W
                 row = event.pos[1] / CELL_H
                 self.bursts.spawn(col, row)

@@ -105,7 +105,16 @@ Other layout notes:
 - The canvas is sized in device pixels (`devicePixelRatio`, capped at 2) so text
   stays sharp on retina screens instead of being stretched by CSS.
 - Text is centred on the banner, not on the full grid, so cropping never cuts it.
-- Clicking or tapping throws a burst of snow. Dragging keeps throwing it.
+- Left click or tap throws a burst of snow, anywhere on the canvas, including the
+  sky at the sides. Only the primary button counts; right and middle click are
+  ignored, and the context menu is suppressed.
+- Holding the button down throws one burst, not a stream. Dragging throws more,
+  but only after the pointer has moved 14 px and 45 ms have passed, so a slow
+  press stays a single burst.
+- The canvas sets `touch-action: none`, so dragging a finger throws snow instead
+  of being stolen by the browser as a scroll or zoom gesture.
+- Snow is drawn straight onto the canvas in pixel space, so it works outside the
+  grid instead of being clipped to the 88 x 74 cell buffer.
 - Height uses `100dvh`; orientation changes re-run the layout after a short
   delay.
 
@@ -147,6 +156,28 @@ iphone-390x844    view 560x1036     css 390x844     cells 912  letters 20
 android-360x640   view 580x1036     css 360x640     cells 912  letters 20
 pixel-412x915     view 560x1036     css 412x915     cells 912  letters 20
 index redirect    pathname .../dist/ascii-christmas-tree.html  state object
+```
+
+Click behaviour, measured with synthetic pointer events at 1510 x 590:
+
+```
+left far-left sky    bursts 34   OK
+left far-right sky   bursts 34   OK
+left centre          bursts 34   OK
+right button         bursts  0   OK
+middle button        bursts  0   OK
+long left press      bursts 34   OK
+drag across sky      bursts 340  OK
+```
+
+Touch behaviour on a 390 x 844 phone viewport, with synthetic touch events:
+
+```
+tap centre           bursts 34   OK
+tap left sky         bursts 34   OK
+tap right sky        bursts 34   OK
+touch drag           bursts 272  OK
+stays paused         paused True OK
 ```
 
 Frame fidelity against the pygame build at `t = 20 s` is unchanged at 99.95%
