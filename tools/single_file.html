@@ -409,9 +409,12 @@ function drawOverlay() {
   }
 
   if (letters > 0) {
-    fb.clearRect(CFG.bannerTop - 1, CFG.bannerBottom + 1, 0, COLS);
-    for (let k = 0; k < CFG.bannerCells.length; k++) {
-      const cell = CFG.bannerCells[k];
+    const narrow = VIEW.w < COLS * CW;
+    const cells = narrow ? CFG.bannerNarrowCells : CFG.bannerCells;
+    const bottom = narrow ? CFG.bannerNarrowBottom : CFG.bannerBottom;
+    fb.clearRect(CFG.bannerTop - 1, bottom + 1, 0, COLS);
+    for (let k = 0; k < cells.length; k++) {
+      const cell = cells[k];
       const index = cell[0];
       if (index >= letters) continue;
       const ch = cell[1];

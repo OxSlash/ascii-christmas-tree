@@ -60,6 +60,22 @@ def pack_background(bg):
     return {"stars": stars, "far": flakes(bg.far), "near": flakes(bg.near)}
 
 
+def narrow_banner_cells():
+    lines = ("MERRY", "CHRISTMAS", "2026")
+    cells = []
+    index = 0
+    for line_no, line in enumerate(lines):
+        width = len(line) * mod.BANNER_STEP - 1
+        start = (mod.COLS - width) // 2
+        top = mod.BANNER_TOP + line_no * (mod.BANNER_ROWS + mod.BANNER_LINE_GAP)
+        for pos, ch in enumerate(line):
+            cells.append([int(index), str(ch), int(start + pos * mod.BANNER_STEP), int(top)])
+            index += 1
+        index += 1
+    bottom = mod.BANNER_TOP + len(lines) * (mod.BANNER_ROWS + mod.BANNER_LINE_GAP)
+    return cells, bottom
+
+
 def build():
     seed = mod.SEED_DEFAULT
     data = mod.build_tree(seed, PARTICLES)
@@ -70,6 +86,7 @@ def build():
     payload = base64.b64encode(blob).decode("ascii")
     banner_cells = [[int(i), str(ch), int(col), int(top)] for i, ch, col, top in mod.BANNER_CELLS]
     banner_font = {k: list(v) for k, v in mod.BANNER_FONT.items()}
+    narrow_cells, narrow_bottom = narrow_banner_cells()
 
     config = {
         "cols": mod.COLS,
@@ -92,6 +109,8 @@ def build():
         "bannerRows": mod.BANNER_ROWS,
         "bannerStep": mod.BANNER_STEP,
         "bannerCells": banner_cells,
+        "bannerNarrowCells": narrow_cells,
+        "bannerNarrowBottom": narrow_bottom,
         "bannerFont": banner_font,
         "palette": [list(c) for c in mod.PALETTE],
         "glyphs": mod.GLYPH_CHARS,
