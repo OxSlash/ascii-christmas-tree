@@ -12,7 +12,6 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 PARTICLES = 12000
-SCALE_POS = 50.0
 SCALE_TIME = 100.0
 SCALE_ANGLE = 10000.0
 SCALE_FREQ = 10000.0
@@ -60,20 +59,10 @@ def pack_background(bg):
     return {"stars": stars, "far": flakes(bg.far), "near": flakes(bg.near)}
 
 
-def narrow_banner_cells():
-    lines = ("MERRY", "CHRISTMAS", "2026")
-    cells = []
-    index = 0
-    for line_no, line in enumerate(lines):
-        width = len(line) * mod.BANNER_STEP - 1
-        start = (mod.COLS - width) // 2
-        top = mod.BANNER_TOP + line_no * (mod.BANNER_ROWS + mod.BANNER_LINE_GAP)
-        for pos, ch in enumerate(line):
-            cells.append([int(index), str(ch), int(start + pos * mod.BANNER_STEP), int(top)])
-            index += 1
-        index += 1
-    bottom = mod.BANNER_TOP + len(lines) * (mod.BANNER_ROWS + mod.BANNER_LINE_GAP)
-    return cells, bottom
+def banner_bounds(cells):
+    first = min(cell[2] for cell in cells)
+    last = max(cell[2] for cell in cells) + mod.BANNER_STEP - 2
+    return first, last
 
 
 def build():
@@ -86,7 +75,7 @@ def build():
     payload = base64.b64encode(blob).decode("ascii")
     banner_cells = [[int(i), str(ch), int(col), int(top)] for i, ch, col, top in mod.BANNER_CELLS]
     banner_font = {k: list(v) for k, v in mod.BANNER_FONT.items()}
-    narrow_cells, narrow_bottom = narrow_banner_cells()
+    banner_first, banner_last = banner_bounds(banner_cells)
 
     config = {
         "cols": mod.COLS,
@@ -104,13 +93,9 @@ def build():
         "tText": mod.T_TEXT,
         "text": mod.TEXT,
         "letterDelay": mod.LETTER_DELAY,
-        "bannerTop": mod.BANNER_TOP,
-        "bannerBottom": mod.BANNER_BOTTOM,
-        "bannerRows": mod.BANNER_ROWS,
-        "bannerStep": mod.BANNER_STEP,
         "bannerCells": banner_cells,
-        "bannerNarrowCells": narrow_cells,
-        "bannerNarrowBottom": narrow_bottom,
+        "bannerFirst": banner_first,
+        "bannerLast": banner_last,
         "bannerFont": banner_font,
         "palette": [list(c) for c in mod.PALETTE],
         "glyphs": mod.GLYPH_CHARS,
@@ -120,18 +105,12 @@ def build():
         "goldLight": int(mod.GOLD_LIGHT),
         "silver": int(mod.SILVER),
         "gold": int(mod.GOLD),
-        "pinePale": int(mod.PINE_PALE),
-        "emeraldLight": int(mod.EMERALD_LIGHT),
-        "seed": seed,
-        "title": mod.TITLE,
         "bg": list(mod.BG),
         "light": int(mod.LIGHT),
         "star": int(mod.STAR),
-        "scalePos": SCALE_POS,
         "scaleTime": SCALE_TIME,
         "scaleAngle": SCALE_ANGLE,
         "scaleFreq": SCALE_FREQ,
-        "count": count,
     }
 
     here = os.path.dirname(os.path.abspath(__file__))

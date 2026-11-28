@@ -33,16 +33,15 @@ offline_cells   912
 fps             39.3
 ```
 
-Frame-for-frame comparison against the pygame build at `t = 20 s`, ignoring the
-HUD rows:
+Frame-for-frame comparison against the pygame build at `t = 20 s`:
 
 ```
-glyph_match 5803/5808  (99.91%)
-color_match 5764/5808  (99.24%)
-level_match 5805/5808  (99.95%)
+glyph_match 5805/5808  (99.95%)
+color_match 5776/5808  (99.45%)
+level_match 5807/5808  (99.98%)
 ```
 
-The five remaining cells are sub-pixel tie-breaks where two particles land in
+The three remaining cells are sub-pixel tie-breaks where two particles land in
 the same cell; they swap between adjacent glyphs and are not visible.
 
 Timeline parity with the native build:
@@ -60,10 +59,9 @@ t=12.0 cells 949  letters 20
 
 | Input | Action |
 |---|---|
-| Tap / click | Pause or resume |
+| Tap / click | Throw a burst of snow |
+| Drag | Keep throwing snow |
 | `Space` | Pause or resume |
-| `R` | Restart |
-| `D` | Show FPS, particle count, visible cells |
 | `Esc` | Stop the loop |
 
 ## Tools

@@ -6,7 +6,6 @@ import asyncio
 import math
 import os
 import sys
-import time
 
 import numpy as np
 import pygame
@@ -26,7 +25,7 @@ Z_OFFSET = 900.0
 SCALE_X = 0.279
 SCALE_Y = SCALE_X * CELL_W / CELL_H
 CENTER_X = COLS * 0.5
-CENTER_Y = ROWS - 9.0
+CENTER_Y = ROWS - 7.0
 TREE_HEIGHT = 472.0
 TREE_RADIUS = 190.0
 OMEGA = 0.55
@@ -39,27 +38,27 @@ T_GIFT = 9.0
 T_STAR = 11.5
 T_TEXT = 7.8
 TEXT = "MERRY CHRISTMAS 2026"
-GREETING = ("MERRY", "CHRISTMAS 2026")
+GREETING = ("MERRY", "CHRISTMAS", "2026")
 LETTER_DELAY = 0.11
 
-BANNER_TOP = 3
+BANNER_TOP = 1
 BANNER_ROWS = 5
-BANNER_STEP = 6
+BANNER_STEP = 5
 BANNER_LINE_GAP = 1
 BANNER_FONT = {
-    "M": ("#...#", "##.##", "#.#.#", "#...#", "#...#"),
-    "E": ("#####", "#....", "####.", "#....", "#####"),
-    "R": ("####.", "#...#", "####.", "#..#.", "#...#"),
-    "Y": ("#...#", "#...#", ".#.#.", "..#..", "..#.."),
-    "C": (".####", "#....", "#....", "#....", ".####"),
-    "H": ("#...#", "#...#", "#####", "#...#", "#...#"),
-    "I": ("#####", "..#..", "..#..", "..#..", "#####"),
-    "S": (".####", "#....", ".###.", "....#", "####."),
-    "T": ("#####", "..#..", "..#..", "..#..", "..#.."),
-    "A": (".###.", "#...#", "#####", "#...#", "#...#"),
-    "2": (".###.", "#...#", "..#..", ".#...", "#####"),
-    "0": (".###.", "#...#", "#...#", "#...#", ".###."),
-    "6": ("..##.", ".#...", "####.", "#...#", ".###."),
+    "M": ("#..#", "####", "#..#", "#..#", "#..#"),
+    "E": ("####", "#...", "###.", "#...", "####"),
+    "R": ("###.", "#..#", "###.", "#..#", "#..#"),
+    "Y": ("#..#", "#..#", ".##.", "..#.", "..#."),
+    "C": (".###", "#...", "#...", "#...", ".###"),
+    "H": ("#..#", "#..#", "####", "#..#", "#..#"),
+    "I": ("####", ".##.", ".##.", ".##.", "####"),
+    "S": (".###", "#...", ".##.", "...#", "###."),
+    "T": ("####", ".##.", ".##.", ".##.", ".##."),
+    "A": (".##.", "#..#", "####", "#..#", "#..#"),
+    "2": (".##.", "#..#", "..#.", ".#..", "####"),
+    "0": (".##.", "#..#", "#..#", "#..#", ".##."),
+    "6": (".##.", "#...", "###.", "#..#", ".##."),
 }
 
 
@@ -612,22 +611,6 @@ class Framebuffer:
             self.color[row, col] = color
             self.level[row, col] = level
 
-    def clear_rect(self, row0, row1, col0, col1):
-        r0 = max(0, row0)
-        r1 = min(ROWS, row1)
-        c0 = max(0, col0)
-        c1 = min(COLS, col1)
-        if r0 < r1 and c0 < c1:
-            self.glyph[r0:r1, c0:c1] = -1
-    def text(self, content, row, col, color, level):
-        for offset, ch in enumerate(content):
-            if ch == " ":
-                continue
-            glyph = GLYPH_INDEX.get(ch)
-            if glyph is None:
-                continue
-            self.put(col + offset, row, glyph, color, level)
-
 
 class Atlas:
     def __init__(self, font):
@@ -702,18 +685,71 @@ def parse_args(argv):
     return seed, fps
 
 
+class Bursts:
+    def __init__(self):
+        self.col = []
+        self.row = []
+        self.vx = []
+        self.vy = []
+        self.age = []
+        self.life = []
+        self.glyph = []
+        self.rng = np.random.default_rng(2026)
+
+    def spawn(self, col, row):
+        count = 46
+        angle = self.rng.uniform(0.0, math.tau, count)
+        speed = self.rng.uniform(3.0, 17.0, count)
+        self.col.extend([col] * count)
+        self.row.extend([row] * count)
+        self.vx.extend((np.cos(angle) * speed).tolist())
+        self.vy.extend((np.sin(angle) * speed * 0.8 - 4.0).tolist())
+        self.age.extend([0.0] * count)
+        self.life.extend(self.rng.uniform(0.9, 1.9, count).tolist())
+        self.glyph.extend(self.rng.integers(0, 4, count).tolist())
+
+    def update(self, dt):
+        if not self.col:
+            return
+        keep = []
+        for i in range(len(self.col)):
+            age = self.age[i] + dt
+            if age >= self.life[i]:
+                continue
+            col = self.col[i] + self.vx[i] * dt
+            row = self.row[i] + self.vy[i] * dt
+            vy = self.vy[i] + 24.0 * dt
+            if row > ROWS + 3 or col < -3 or col > COLS + 3:
+                continue
+            keep.append((col, row, self.vx[i], vy, age, self.life[i], self.glyph[i]))
+        self.col = [k[0] for k in keep]
+        self.row = [k[1] for k in keep]
+        self.vx = [k[2] for k in keep]
+        self.vy = [k[3] for k in keep]
+        self.age = [k[4] for k in keep]
+        self.life = [k[5] for k in keep]
+        self.glyph = [k[6] for k in keep]
+
+    def draw(self, framebuffer):
+        flake = (GLYPH_INDEX["."], GLYPH_INDEX["'"], GLYPH_INDEX["*"], GLYPH_INDEX["+"])
+        for i in range(len(self.col)):
+            fade = 1.0 - self.age[i] / self.life[i]
+            level = max(4, min(LEVELS - 1, int(3 + fade * 8)))
+            framebuffer.put(int(self.col[i]), int(self.row[i]), flake[self.glyph[i]], WHITE, level)
+
+
 class App:
     def __init__(self, seed, fps):
         self.fps = fps
         self.seed = seed
         self.t = 0.0
         self.paused = False
-        self.debug = False
         self.running = True
         self.clock = pygame.time.Clock()
         self.font = load_font(12, bold=True)
         self.atlas = Atlas(self.font)
         self.framebuffer = Framebuffer()
+        self.bursts = Bursts()
         self.screen = pygame.display.get_surface()
         self.tree = None
         self.background = None
@@ -741,21 +777,15 @@ class App:
                     self.running = False
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
-                elif event.key == pygame.K_r:
-                    self.rebuild(int(np.random.default_rng().integers(1, 99999)))
-                elif event.key == pygame.K_d:
-                    self.debug = not self.debug
-                elif event.key == pygame.K_s and not IS_WEB:
-                    self.screenshot()
-
-    def screenshot(self):
-        os.makedirs("screenshots", exist_ok=True)
-        stamp = time.strftime("%Y%m%d-%H%M%S")
-        pygame.image.save(self.screen, os.path.join("screenshots", f"tree-{stamp}.png"))
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                col = event.pos[0] / CELL_W
+                row = event.pos[1] / CELL_H
+                self.bursts.spawn(col, row)
 
     def step(self, dt):
         if not self.paused:
             self.t += dt
+        self.bursts.update(dt)
         self.draw()
 
     def draw(self):
@@ -763,46 +793,28 @@ class App:
         self.background.draw(self.framebuffer, self.t)
         self.tree.draw(self.framebuffer, self.t)
         self.background.draw_front(self.framebuffer, self.t)
+        self.bursts.draw(self.framebuffer)
         self.draw_overlay()
         self.compose()
         pygame.display.flip()
 
     def draw_overlay(self):
         fb = self.framebuffer
-        fb.text(TITLE, 0, 1, GOLD_LIGHT, LEVELS - 1)
-        hint = "space pause   R restart   S shot   D debug   Esc quit"
-        if IS_WEB:
-            hint = "space pause   R restart   D debug   Esc quit"
-        fb.text(hint, 1, 1, SILVER, 8)
-        fb.text(f"t ~ {self.t:4.1f}s", 0, COLS - 10, WHITE, LEVELS - 1)
-
-        rotation = int(math.degrees(OMEGA * self.t)) % 360
-        lights = int(round(self.tree.lights_ratio * 100.0))
         letters = self.letter_count()
-        fb.text(f"rotation {rotation:3d} deg", ROWS - 6, 1, SILVER, 9)
-        fb.text(f"lights {lights:3d}%", ROWS - 5, 1, GOLD, 9)
-        fb.text(f"letters {letters:2d}", ROWS - 4, 1, PINE_PALE, 9)
-        fb.text(f"seed {self.seed}", ROWS - 3, 1, SILVER, 7)
-
-        if self.debug:
-            fb.text(f"fps {self.clock.get_fps():4.1f}", 2, 1, EMERALD_LIGHT, 10)
-            fb.text(f"particles {self.tree.count}", 3, 1, EMERALD_LIGHT, 10)
-            fb.text(f"cells {self.tree.visible_cells}", 4, 1, EMERALD_LIGHT, 10)
-
-        if letters > 0:
-            cycle = (GOLD_LIGHT, RUBY_LIGHT, EMERALD_LIGHT, SAPPHIRE_LIGHT, SILVER, AMBER)
-            fb.clear_rect(BANNER_TOP - 1, BANNER_BOTTOM + 1, 0, COLS)
-            for index, ch, col, top in BANNER_CELLS:
-                if index >= letters:
-                    continue
-                pattern = BANNER_FONT.get(ch)
-                if pattern is None:
-                    continue
-                color = cycle[index % len(cycle)]
-                for r, line in enumerate(pattern):
-                    for c, mark in enumerate(line):
-                        if mark == "#":
-                            fb.put(col + c, top + r, GLYPH_INDEX["#"], color, LEVELS - 1)
+        if letters <= 0:
+            return
+        cycle = (GOLD_LIGHT, RUBY_LIGHT, EMERALD_LIGHT, SAPPHIRE_LIGHT, SILVER, AMBER)
+        for index, ch, col, top in BANNER_CELLS:
+            if index >= letters:
+                continue
+            pattern = BANNER_FONT.get(ch)
+            if pattern is None:
+                continue
+            color = cycle[index % len(cycle)]
+            for r, line in enumerate(pattern):
+                for c, mark in enumerate(line):
+                    if mark == "#":
+                        fb.put(col + c, top + r, GLYPH_INDEX["#"], color, LEVELS - 1)
 
     def compose(self):
         fb = self.framebuffer

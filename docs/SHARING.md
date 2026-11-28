@@ -68,34 +68,29 @@ Each card is rendered from the real program at `t = 20 s`, not a mockup.
 
 The single-file build sizes itself to the device. On anything narrower than
 560 px it crops the sides; only empty sky is removed, the tree stays whole. The
-crop width is derived from the viewport aspect ratio, clamped between 54 and 88
-columns, so the greeting banner always fits.
+crop width comes from the viewport aspect ratio, with a floor wide enough to
+hold the greeting plus a six column margin on each side.
 
 | Viewport | View width | CSS size | Scale |
 |---|---|---|---|
-| 360 × 640 (small Android) | 580 × 1036 | 358 × 640 | 0.62 |
-| 375 × 667 (iPhone SE) | 540 × 1036 | 375 × 719 | 0.69 |
-| 390 × 844 (iPhone) | 540 × 1036 | 390 × 748 | 0.72 |
-| 393 × 852 (iPhone 15) | 540 × 1036 | 393 × 754 | 0.73 |
-| 412 × 915 (Pixel) | 540 × 1036 | 412 × 790 | 0.76 |
-| 430 × 932 (iPhone Max) | 540 × 1036 | 430 × 825 | 0.80 |
-| 768 × 1024 (tablet) | 880 × 1036 | 744 × 876 | 0.85 |
+| 360 × 640 (small Android) | 560 × 1036 | 360 × 666 | 0.64 |
+| 390 × 844 (iPhone) | 560 × 1036 | 390 × 721 | 0.70 |
+| 412 × 915 (Pixel) | 560 × 1036 | 412 × 762 | 0.74 |
 | 1280 × 1000 (desktop) | 880 × 1036 | 846 × 996 | 0.96 |
 
 Without the crop, a 390 px phone would render at 0.44, giving a 5 px glyph
 height that makes the banner unreadable.
 
-The banner has two layouts. Wide screens use two lines, `MERRY` over
-`CHRISTMAS 2026`, 80 columns wide. Narrow screens use three lines, `MERRY` over
-`CHRISTMAS` over `2026`, 53 columns wide. The renderer picks whichever fits the
-current view.
+The greeting is one layout everywhere: three lines, `MERRY` over `CHRISTMAS`
+over `2026`, 44 columns wide, drawn in a 4x5 pixel font. It sits 22 columns in
+from the left edge of the full grid, so it keeps a margin on every device and
+never touches the sides. The text has no background band; the letters are drawn
+straight onto the starfield.
 
 Other mobile fixes:
 
-- Text is anchored to the visible crop, not to the full grid, so nothing is cut
-  off at the edges.
-- Tap to pause requires a short press with less than 10 px of movement, so
-  scrolling does not trigger it.
+- Text is centred on the banner, not on the full grid, so cropping never cuts it.
+- Clicking or tapping throws a burst of snow. Dragging keeps throwing it.
 - Height uses `100dvh`; orientation changes re-run the layout after a short
   delay.
 

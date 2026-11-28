@@ -78,12 +78,10 @@ Verified to still decode after JPEG quality 40 and downscaling to 30% of its siz
 | Key | Action |
 | --- | --- |
 | `Space` | Pause / resume |
-| `R` | Restart the animation |
-| `S` | Save a screenshot (desktop build only) |
-| `D` | Toggle debug readouts |
 | `Esc` | Quit |
 
-In the HTML file, tap or click the canvas to pause instead.
+In the HTML file, click or tap anywhere to throw a burst of snow. Drag to keep
+throwing it.
 
 ## Run it on your computer
 
