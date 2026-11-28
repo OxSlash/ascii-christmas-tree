@@ -396,19 +396,16 @@ function hudLeft() {
 
 function drawOverlay() {
   const left = hudLeft();
-
-  const rotation = ((Math.floor((CFG.omega * state.t * 180) / Math.PI) % 360) + 360) % 360;
-  const lights = Math.round(lightsRatio * 100);
   const letters = letterCount();
-  fb.text("rotation " + String(rotation).padStart(3, " ") + " deg", ROWS - 6, left, CFG.silver, 9);
-  fb.text("lights " + String(lights).padStart(3, " ") + "%", ROWS - 5, left, CFG.gold, 9);
-  fb.text("letters " + String(letters).padStart(2, " "), ROWS - 4, left, CFG.pinePale, 9);
-  fb.text("seed " + CFG.seed, ROWS - 3, left, CFG.silver, 7);
 
   if (state.debug) {
-    fb.text("fps " + fpsValue.toFixed(1), 0, left, CFG.emeraldLight, 10);
-    fb.text("particles " + TREE.n, 1, left, CFG.emeraldLight, 10);
-    fb.text("cells " + visibleCells, 2, left, CFG.emeraldLight, 10);
+    fb.text("fps " + fpsValue.toFixed(1), ROWS - 7, left, CFG.emeraldLight, 10);
+    fb.text("particles " + TREE.n, ROWS - 6, left, CFG.emeraldLight, 10);
+    fb.text("cells " + visibleCells, ROWS - 5, left, CFG.emeraldLight, 10);
+    fb.text("rotation " + String(((Math.floor((CFG.omega * state.t * 180) / Math.PI) % 360) + 360) % 360).padStart(3, " ") + " deg", ROWS - 4, left, CFG.emeraldLight, 10);
+    fb.text("lights " + String(Math.round(lightsRatio * 100)).padStart(3, " ") + "%", ROWS - 3, left, CFG.emeraldLight, 10);
+    fb.text("letters " + String(letters).padStart(2, " "), ROWS - 2, left, CFG.emeraldLight, 10);
+    fb.text("seed " + CFG.seed, ROWS - 1, left, CFG.emeraldLight, 10);
   }
 
   if (letters > 0) {
