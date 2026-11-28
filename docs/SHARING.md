@@ -66,42 +66,71 @@ Each card is rendered from the real program at `t = 20 s`, not a mockup.
 
 ## Mobile layout
 
-The single-file build crops the sides when the viewport is narrower than 560 px.
-Only empty sky is removed; the tree, banner, and HUD stay whole.
+The single-file build sizes itself to the device. On anything narrower than
+560 px it crops the sides; only empty sky is removed, the tree stays whole. The
+crop width is derived from the viewport aspect ratio, clamped between 54 and 88
+columns, so the greeting banner always fits.
 
-| Viewport | Backing store | CSS size | Scale |
+| Viewport | View width | CSS size | Scale |
 |---|---|---|---|
-| 390 × 844 (iPhone) | 620 × 1036 | 390 × 651 | 0.63 |
-| 360 × 640 (Android) | 620 × 1036 | 360 × 601 | 0.58 |
-| 412 × 915 (Pixel) | 620 × 1036 | 412 × 688 | 0.66 |
-| 1280 × 1160 (desktop) | 880 × 1036 | 827 × 974 | 0.94 |
+| 360 × 640 (small Android) | 580 × 1036 | 358 × 640 | 0.62 |
+| 375 × 667 (iPhone SE) | 540 × 1036 | 375 × 719 | 0.69 |
+| 390 × 844 (iPhone) | 540 × 1036 | 390 × 748 | 0.72 |
+| 393 × 852 (iPhone 15) | 540 × 1036 | 393 × 754 | 0.73 |
+| 412 × 915 (Pixel) | 540 × 1036 | 412 × 790 | 0.76 |
+| 430 × 932 (iPhone Max) | 540 × 1036 | 430 × 825 | 0.80 |
+| 768 × 1024 (tablet) | 880 × 1036 | 744 × 876 | 0.85 |
+| 1280 × 1000 (desktop) | 880 × 1036 | 846 × 996 | 0.96 |
 
-Without the crop, the same phones would render at 0.44, giving a 5 px glyph
+Without the crop, a 390 px phone would render at 0.44, giving a 5 px glyph
 height that makes the banner unreadable.
+
+The banner has two layouts. Wide screens use two lines, `MERRY` over
+`CHRISTMAS 2026`, 80 columns wide. Narrow screens use three lines, `MERRY` over
+`CHRISTMAS` over `2026`, 53 columns wide. The renderer picks whichever fits the
+current view.
 
 Other mobile fixes:
 
-- HUD text is anchored to the visible crop, not to the full grid, so nothing is
-  cut off at the edges.
-- Tap to pause now requires a short press with less than 10 px of movement, so
+- Text is anchored to the visible crop, not to the full grid, so nothing is cut
+  off at the edges.
+- Tap to pause requires a short press with less than 10 px of movement, so
   scrolling does not trigger it.
-- Height uses `100dvh` and the hint respects `env(safe-area-inset-bottom)`.
-- Orientation changes re-run the layout after a short delay.
+- Height uses `100dvh`; orientation changes re-run the layout after a short
+  delay.
+
+## Rendering performance
+
+The first version composited the grid with one `drawImage` call per cell, which
+cost 4.4 to 5.6 ms per frame and was the whole bottleneck. Drawing the tree
+itself took only 0.4 ms.
+
+The renderer now writes glyph tiles straight into a `Uint32Array` backing an
+`ImageData`, then blits that surface once:
+
+| Viewport | Before | After |
+|---|---|---|
+| Desktop | 24.2 ms | 6.1 ms |
+| iPhone 390 × 844 | 18.3 ms | 6.1 ms |
+| Android 360 × 640 | 18.0 ms | 6.0 ms |
+
+That is roughly 164 fps of headroom, so the animation stays smooth even on
+phones that cannot hit the display refresh rate.
 
 ## Verification
 
 All checks run in headless Edge, so a browser you are using stays untouched.
 
 ```
-iphone-390x844   view 620x1036  css 390x651  cells 912  letters 20
-android-360x640  view 620x1036  css 360x601  cells 912  letters 20
-pixel-412x915    view 620x1036  css 412x688  cells 912  letters 20
-desktop          view 880x1036  css 827x974  cells 912  letters 20  fira True
+iphone-390x844   view 540x1036  css 390x748  cells 912  letters 20
+android-360x640  view 580x1036  css 358x640  cells 912  letters 20
+pixel-412x915    view 540x1036  css 412x790  cells 912  letters 20
+desktop          view 880x1036  css 846x996  cells 912  letters 20  fira True
 index redirect   pathname .../dist/ascii-christmas-tree.html  state object
 ```
 
 Frame fidelity against the pygame build at `t = 20 s` is unchanged at 99.91%
-glyph agreement. Frame rate on desktop is 48.4 fps (median of three runs).
+glyph agreement.
 
 ## Caveats
 
