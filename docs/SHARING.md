@@ -64,22 +64,35 @@ python tools/make_social_cards.py
 
 Each card is rendered from the real program at `t = 20 s`, not a mockup.
 
-## Mobile layout
+## Screen layout
 
-The single-file build sizes itself to the device. On anything narrower than
-560 px it crops the sides; only empty sky is removed, the tree stays whole. The
-crop width comes from the viewport aspect ratio, with a floor wide enough to
-hold the greeting plus a six column margin on each side.
+The canvas always fills the whole viewport, so there are no letterbox bars and no
+visible frame around the picture. The grid is drawn centred inside it at a
+uniform scale, and everything outside the grid is filled with the same starfield
+and snow, so the sky runs edge to edge.
+
+The grid is 88 x 74 cells, which is portrait (aspect 0.85). A wide window cannot
+show it full width without cutting the tree in half, so the grid keeps its aspect
+and the sides are sky.
+
+| Viewport | Canvas | Grid drawn | Sky fills |
+|---|---|---|---|
+| 1510 x 590 (laptop) | 1510 x 590 | 501 x 590 | 1009 px of sides |
+| 1414 x 760 (MacBook) | 1414 x 760 | 646 x 760 | 768 px of sides |
+| 998 x 628 (iPad landscape) | 998 x 628 | 533 x 628 | 465 px of sides |
+| 742 x 884 (iPad portrait) | 742 x 884 | 742 x 884 | none needed |
+| 1894 x 940 (1920 desktop) | 1894 x 940 | 798 x 940 | 1096 px of sides |
+
+On phones the view is cropped first, because a 390 px phone would otherwise
+render at 0.44 and the greeting would be unreadable. The crop width comes from
+the viewport aspect ratio, with a floor wide enough to hold the greeting plus a
+six column margin on each side.
 
 | Viewport | View width | CSS size | Scale |
 |---|---|---|---|
-| 360 × 640 (small Android) | 560 × 1036 | 360 × 666 | 0.64 |
-| 390 × 844 (iPhone) | 560 × 1036 | 390 × 721 | 0.70 |
-| 412 × 915 (Pixel) | 560 × 1036 | 412 × 762 | 0.74 |
-| 1280 × 1000 (desktop) | 880 × 1036 | 846 × 996 | 0.96 |
-
-Without the crop, a 390 px phone would render at 0.44, giving a 5 px glyph
-height that makes the banner unreadable.
+| 360 x 640 (small Android) | 560 x 1036 | 360 x 640 | 0.64 |
+| 390 x 844 (iPhone) | 560 x 1036 | 390 x 844 | 0.70 |
+| 412 x 915 (Pixel) | 560 x 1036 | 412 x 915 | 0.74 |
 
 The greeting is one layout everywhere: three lines, `MERRY` over `CHRISTMAS`
 over `2026`, 44 columns wide, drawn in a 4x5 pixel font. It sits 22 columns in
@@ -87,8 +100,10 @@ from the left edge of the full grid, so it keeps a margin on every device and
 never touches the sides. The text has no background band; the letters are drawn
 straight onto the starfield.
 
-Other mobile fixes:
+Other layout notes:
 
+- The canvas is sized in device pixels (`devicePixelRatio`, capped at 2) so text
+  stays sharp on retina screens instead of being stretched by CSS.
 - Text is centred on the banner, not on the full grid, so cropping never cuts it.
 - Clicking or tapping throws a burst of snow. Dragging keeps throwing it.
 - Height uses `100dvh`; orientation changes re-run the layout after a short
@@ -105,26 +120,36 @@ The renderer now writes glyph tiles straight into a `Uint32Array` backing an
 
 | Viewport | Before | After |
 |---|---|---|
-| Desktop | 24.2 ms | 6.1 ms |
-| iPhone 390 × 844 | 18.3 ms | 6.1 ms |
-| Android 360 × 640 | 18.0 ms | 6.0 ms |
+| Desktop 1920 x 1080 | 24.2 ms | 6.1 ms |
+| MacBook 1440 x 900 | 21.0 ms | 6.1 ms |
+| Laptop 1536 x 730 | 20.4 ms | 6.1 ms |
+| iPhone 390 x 844 | 18.3 ms | 6.1 ms |
+| Android 360 x 640 | 18.0 ms | 6.1 ms |
 
 That is roughly 164 fps of headroom, so the animation stays smooth even on
 phones that cannot hit the display refresh rate.
+
+Filling the sides with sky costs almost nothing. The first attempt redrew a
+full-screen `ImageData` every frame, which cost 4.1 ms at 1920 x 1080 and pulled
+that size down to 82 fps. It now draws one `fillRect` per star and flake
+straight onto the canvas, which costs 0.37 to 1.17 ms depending on width.
 
 ## Verification
 
 All checks run in headless Edge, so a browser you are using stays untouched.
 
 ```
-iphone-390x844   view 540x1036  css 390x748  cells 912  letters 20
-android-360x640  view 580x1036  css 358x640  cells 912  letters 20
-pixel-412x915    view 540x1036  css 412x790  cells 912  letters 20
-desktop          view 880x1036  css 846x996  cells 912  letters 20  fira True
-index redirect   pathname .../dist/ascii-christmas-tree.html  state object
+laptop-1536x730   canvas 1510x590   grid 501x590    cells 912  letters 20
+macbook-1440x900  canvas 1414x760   grid 646x760    cells 912  letters 20
+ipad-1024x768     canvas  998x628   grid 533x628    cells 912  letters 20
+desktop-1920x1080 canvas 1894x940   grid 798x940    cells 912  letters 20
+iphone-390x844    view 560x1036     css 390x844     cells 912  letters 20
+android-360x640   view 580x1036     css 360x640     cells 912  letters 20
+pixel-412x915     view 560x1036     css 412x915     cells 912  letters 20
+index redirect    pathname .../dist/ascii-christmas-tree.html  state object
 ```
 
-Frame fidelity against the pygame build at `t = 20 s` is unchanged at 99.91%
+Frame fidelity against the pygame build at `t = 20 s` is unchanged at 99.95%
 glyph agreement.
 
 ## Caveats

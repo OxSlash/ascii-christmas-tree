@@ -33,7 +33,6 @@ body {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   background: #070a12;
-  box-shadow: 0 0 60px rgba(80, 140, 255, 0.12);
 }
 </style>
 </head>
@@ -103,20 +102,80 @@ canvas.height = ROWS * CH;
 const ctx = canvas.getContext("2d", { alpha: false });
 
 const VIEW = { x: 0, y: 0, w: canvas.width, h: canvas.height };
+const GRID = { x: 0, y: 0, w: 0, h: 0, scale: 1 };
 const BANNER_MARGIN = 6;
+
+let skyCells = 1;
+
+function buildSky() {
+  skyCells = Math.max(1, Math.ceil(canvas.width / Math.max(0.01, CW * GRID.scale)));
+}
+
+function skyColor(colorIndex, factor) {
+  const base = PALETTE[colorIndex];
+  const r = Math.min(255, Math.floor(base[0] * factor));
+  const g = Math.min(255, Math.floor(base[1] * factor));
+  const b = Math.min(255, Math.floor(base[2] * factor));
+  return "rgb(" + r + "," + g + "," + b + ")";
+}
+
+function skyFlakes(flakes, t, color, size) {
+  const n = flakes.col.length;
+  const cellW = CW * GRID.scale;
+  const cellH = CH * GRID.scale;
+  const reps = Math.ceil(skyCells / COLS) + 1;
+  ctx.fillStyle = color;
+  for (let i = 0; i < n; i++) {
+    let row = (flakes.row[i] + t * flakes.speed[i]) % ROWS;
+    if (row < 0) row += ROWS;
+    const sway = flakes.sway[i] * Math.sin(t * 0.9 + flakes.phase[i]);
+    let col = (flakes.col[i] + t * flakes.drift[i] + sway) % COLS;
+    if (col < 0) col += COLS;
+    const y = row * cellH;
+    for (let k = 0; k < reps; k++) {
+      const x = (col + k * COLS) * cellW;
+      if (x >= canvas.width) break;
+      ctx.fillRect(x | 0, y | 0, size, size);
+    }
+  }
+}
+
+function drawSky(t) {
+  ctx.fillStyle = "rgb(" + CFG.bg[0] + "," + CFG.bg[1] + "," + CFG.bg[2] + ")";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const cellW = CW * GRID.scale;
+  const cellH = CH * GRID.scale;
+  const size = Math.max(1, Math.min(3, Math.round(1.8 * GRID.scale)));
+  const stars = BG_DATA.stars;
+  const reps = Math.ceil(skyCells / COLS) + 1;
+  for (let i = 0; i < stars.col.length; i++) {
+    const twinkle = 0.5 + 0.5 * Math.sin(stars.freq[i] * t + stars.phase[i]);
+    const bright = 0.24 + 0.76 * twinkle * stars.power[i];
+    const color = skyColor(CFG.snow, bright);
+    const y = stars.row[i] * cellH;
+    ctx.fillStyle = color;
+    for (let k = 0; k < reps; k++) {
+      const x = (stars.col[i] + k * COLS) * cellW;
+      if (x >= canvas.width) break;
+      ctx.fillRect(x | 0, y | 0, size, size);
+    }
+  }
+  skyFlakes(BG_DATA.far, t, skyColor(CFG.white, 0.5), size);
+  skyFlakes(BG_DATA.near, t, skyColor(CFG.white, 0.9), size);
+}
 
 function computeView() {
   VIEW.y = 0;
   VIEW.h = ROWS * CH;
   const fullW = COLS * CW;
   const target = window.innerWidth;
-  if (target >= 560) {
+  const aspect = target / Math.max(1, window.innerHeight);
+  if (aspect >= 0.95) {
     VIEW.x = 0;
     VIEW.w = fullW;
     return;
   }
   const bannerCols = CFG.bannerLast - CFG.bannerFirst + 1 + BANNER_MARGIN * 2;
-  const aspect = target / Math.max(1, window.innerHeight);
   const wanted = Math.round((ROWS * CH * aspect) / CW);
   const cropCols = Math.max(bannerCols, Math.min(COLS, wanted));
   VIEW.w = cropCols * CW;
@@ -127,16 +186,24 @@ function computeView() {
 
 function fitCanvas() {
   computeView();
-  if (canvas.width !== VIEW.w || canvas.height !== VIEW.h) {
-    canvas.width = VIEW.w;
-    canvas.height = VIEW.h;
+  const dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+  const vw = Math.max(1, window.innerWidth);
+  const vh = Math.max(1, window.innerHeight);
+  const pw = Math.round(vw * dpr);
+  const ph = Math.round(vh * dpr);
+  if (canvas.width !== pw || canvas.height !== ph) {
+    canvas.width = pw;
+    canvas.height = ph;
   }
-  const pad = window.innerWidth < 560 ? 0 : 24;
-  const availW = window.innerWidth - pad;
-  const availH = window.innerHeight - pad;
-  const scale = Math.max(0.25, Math.min(availW / VIEW.w, availH / VIEW.h));
-  canvas.style.width = Math.floor(VIEW.w * scale) + "px";
-  canvas.style.height = Math.floor(VIEW.h * scale) + "px";
+  canvas.style.width = vw + "px";
+  canvas.style.height = vh + "px";
+  const scale = Math.max(0.15, Math.min(pw / VIEW.w, ph / VIEW.h));
+  GRID.scale = scale;
+  GRID.w = Math.max(1, Math.round(VIEW.w * scale));
+  GRID.h = Math.max(1, Math.round(VIEW.h * scale));
+  GRID.x = Math.round((pw - GRID.w) / 2);
+  GRID.y = Math.round((ph - GRID.h) / 2);
+  buildSky();
 }
 window.addEventListener("resize", fitCanvas);
 window.addEventListener("orientationchange", () => setTimeout(fitCanvas, 120));
@@ -389,10 +456,10 @@ const bursts = [];
 
 function spawnSnow(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
-  const sx = canvas.width / Math.max(1, rect.width);
-  const sy = canvas.height / Math.max(1, rect.height);
-  const col = ((clientX - rect.left) * sx + VIEW.x) / CW;
-  const row = ((clientY - rect.top) * sy + VIEW.y) / CH;
+  const px = ((clientX - rect.left) / Math.max(1, rect.width)) * canvas.width;
+  const py = ((clientY - rect.top) / Math.max(1, rect.height)) * canvas.height;
+  const col = (VIEW.x + (px - GRID.x) / GRID.scale) / CW;
+  const row = (VIEW.y + (py - GRID.y) / GRID.scale) / CH;
   for (let i = 0; i < 46; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = 3 + Math.random() * 14;
@@ -464,8 +531,9 @@ function compose() {
     }
   }
   sctx.putImageData(image, 0, 0);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.drawImage(surface, VIEW.x, VIEW.y, VIEW.w, VIEW.h, 0, 0, VIEW.w, VIEW.h);
+  drawSky(state.t);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(surface, VIEW.x, VIEW.y, VIEW.w, VIEW.h, GRID.x, GRID.y, GRID.w, GRID.h);
 }
 
 let lastTime = performance.now();
